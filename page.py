@@ -9,7 +9,7 @@ import uos
 import image
 from machine import Timer
 from machine import I2C
-import touchscreen as ts
+#import touchscreen as ts
 
 import network
 import utime
@@ -173,8 +173,10 @@ mute_plus_flag = 1
 mute_minus_flag = 0
 mute_state = 0
 
+#按键控制变量
 key_flag = 0
-cmd = None
+cmd = 0
+time0 = 0
 
 #mute light information
 class ML_tools():
@@ -194,7 +196,7 @@ class WB_tools():
         self.toggle_flag = 0
         self.index = 0
         self.preloading = 0
-        self.ls = ["","","",""]
+        self.ls = []
 
 #language information  flag = 0,english  flag = 1,chinese
 class Language():
@@ -233,9 +235,10 @@ class Control_bar():
         self.plus_state = lv.btn.STATE.REL
         self.minus_state = lv.btn.STATE.REL
 def key_init():
+    global key_flag
+    global cmd
     key_flag = 0
     cmd = 0
-    return key_flag,cmd
 
 def create_top_state_btn(parent):
     top_state_btn = lv.btn(parent)
@@ -243,6 +246,7 @@ def create_top_state_btn(parent):
     top_state_btn.set_size(TOP_STATE_BTN_WIDTH,TOP_STATE_BTN_HEIGHT)
     top_state_btn.set_style(0,top_state_btn_style)
     return top_state_btn
+
 
 '''
 *****************************************************************************
@@ -338,69 +342,42 @@ parameter    parent   parent  obj
 *****************************************************************************
 '''
 def open_sensor():
-    key_flag = 0
-    cmd = 0
-    fm.register(board_info.JTAG_TCK, fm.fpioa.GPIO0)
-    key_1=GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
-    fm.register(board_info.JTAG_TDI, fm.fpioa.GPIO1)
-    key_2=GPIO(GPIO.GPIO1,GPIO.IN,GPIO.PULL_UP)
-    fm.register(21, fm.fpioa.GPIO2)
-    key_3=GPIO(GPIO.GPIO2,GPIO.IN,GPIO.PULL_UP)
-    fm.register(22, fm.fpioa.GPIO3)
-    key_4=GPIO(GPIO.GPIO3,GPIO.IN,GPIO.PULL_UP)
+    global key_flag
+    global cmd
+    global time0
+    #fm.register(board_info.JTAG_TCK, fm.fpioa.GPIO0)
+    #key_1=GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
+    #fm.register(board_info.JTAG_TDI, fm.fpioa.GPIO1)
+    #key_2=GPIO(GPIO.GPIO1,GPIO.IN,GPIO.PULL_UP)
+    #fm.register(21, fm.fpioa.GPIO2)
+    #key_3=GPIO(GPIO.GPIO2,GPIO.IN,GPIO.PULL_UP)
+    #fm.register(22, fm.fpioa.GPIO3)
+    #key_4=GPIO(GPIO.GPIO3,GPIO.IN,GPIO.PULL_UP)
 
     lcd.init()
     sensor.reset()
     sensor.set_pixformat(sensor.RGB565)
     sensor.set_framesize(sensor.QVGA)
     sensor.run(1)
-    new_key_once = 0
     while 1:
-        adc = nic.adc()
-        if key_flag == 0:
-            if adc[3] == 15:
-                new_key_once = 1
-                #print(adc[3])
-            if new_key_once == 1:
-                if adc[3] == 7:
-                    cmd = "left"
-                    #print("left")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 13:
-                    cmd = "right"
-                    #print("right")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 14:
-                    cmd = "ok"
-                    #print("ok")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 11:
-                    cmd = "back"
-                    #print("back")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                else:
-                    pass
+        key_detect()
         if cmd:
-            if cmd == "back":
-                key_flag = 1
+            key_flag = 1
             taketime = time.ticks_ms() - time0
         img = sensor.snapshot()
         lcd.display(img)
         if cmd == "back" and taketime > 250:
-            #print("shutdown")
+            key_init()
+            print("-----------------ok------------------")
             sensor.shutdown(1)
             time.sleep_ms(1000)
             return True
         elif cmd == "left":
-            key_flag,cmd = key_init()
+            key_init()
         elif cmd == "right":
-            key_flag,cmd = key_init()
+            key_init()
         elif cmd == "ok":
-            key_flag,cmd = key_init()
+            key_init()
 
 def set_label_for_obj(parent,labelname):
     label = lv.label(parent)
@@ -414,6 +391,31 @@ def create_swich_btn(parent,off_style,on_style):
     sw.set_style(lv.sw.STYLE.KNOB_OFF,off_style)
     sw.set_style(lv.sw.STYLE.KNOB_ON,on_style)
     return sw
+
+def create_list(parent,namels,index):
+    ls_width = 320
+    ls_height = 240
+    ls = lv.list(parent)
+    ls.set_size(ls_width,ls_height)
+    ls.set_style(lv.list.STYLE.BTN_REL,ls_style_rel)
+    ls.set_style(lv.list.STYLE.BTN_PR,ls_style_pr)
+    ls.set_sb_mode(lv.SB_MODE.AUTO)
+    ls.align(None,lv.ALIGN.IN_TOP_MID,0,70)
+    btn_num = len(namels)
+    if btn_num == 0:
+        set_label_for_obj(ls,"not find")
+    else:
+        name = []
+        for i in range(btn_num):
+            name.append("btn"+str(i))
+        for i in range(btn_num):
+            name[i] = ls.add_btn(lv.SYMBOL.SAVE,namels[i])
+        if index != 0:
+            ls.set_btn_selected(name[index-1])
+    lv.list.focus(ls.get_btn_selected(),lv.ANIM.OFF)
+    return ls
+
+
 def select_box(scr,parent,name,state,sw_flag,ls,index):
     pwidth = 320
     pheight = 50
@@ -482,32 +484,6 @@ def lan_ch_page(scr,parent,ls,index):
     lv.scr_load(scr)
     return cur_scr
 
-def create_list(parent,namels,index):
-    ls_width = 320
-    ls_height = 150
-    ls = lv.list(parent)
-    ls.set_size(ls_width,ls_height)
-    ls.set_style(lv.list.STYLE.BTN_REL,ls_style_rel)
-    ls.set_style(lv.list.STYLE.BTN_PR,ls_style_pr)
-    ls.set_sb_mode(lv.SB_MODE.AUTO)
-    ls.align(None,lv.ALIGN.IN_TOP_MID,0,70)
-    btn0 = ls.add_btn(lv.SYMBOL.SAVE,namels[0])
-    btn1 = ls.add_btn(lv.SYMBOL.SAVE,namels[1])
-    btn2 = ls.add_btn(lv.SYMBOL.SAVE,namels[2])
-    btn3 = ls.add_btn(lv.SYMBOL.SAVE,namels[3])
-    if index == 1:
-        ls.set_btn_selected(btn0)
-    elif index == 2:
-        ls.set_btn_selected(btn1)
-    elif index == 3:
-        ls.set_btn_selected(btn2)
-    elif index == 4:
-        ls.set_btn_selected(btn3)
-    else:
-        ls.set_style(lv.list.STYLE.BTN_PR,ls_style_rel)
-    lv.list.focus(ls.get_btn_selected(),lv.ANIM.OFF)
-    return ls
-
 def toggle_swich_page(scr,parent,name,sw_state,names,list_index):
     width = 320
     height = 40
@@ -524,177 +500,6 @@ def toggle_swich_page(scr,parent,name,sw_state,names,list_index):
     cur_scr = scr.get_screen()
     lv.scr_load(scr)
     return cur_scr
-#delay()
-def delay():
-
-    page = lv.page(lv.scr_act())
-    page.set_size(200, 200)
-    page.align(None, lv.ALIGN.CENTER, 0, 0)
-    page.set_style(lv.page.STYLE.SB, style_sb)
-    label = lv.label(page)
-    label.set_long_mode(lv.label.LONG.BREAK)       # Automatically break long lines
-    label.set_width(page.get_fit_width())          # Set the label width to max value to not show hor. scroll bars
-    label.set_text("connect please wait")
-    preload = lv.preload(lv.scr_act())
-    preload.set_size(100, 100)
-    preload.align(None, lv.ALIGN.CENTER, 0, 0)
-    preload.set_style(lv.preload.STYLE.MAIN, style)
-def page():
-    cur_scr = scr.get_screen()
-    lv.scr_load(scr)
-    page1 = lv.page(lv.scr_act())
-    page1.set_size(100, 100)
-    page1.align(None, lv.ALIGN.CENTER, 0, 0)
-    page1.set_style(lv.page.STYLE.SB, style_sb)
-    label = lv.label(page1)
-    label.set_long_mode(lv.label.LONG.BREAK)       # Automatically break long lines
-    label.set_width(page1.get_fit_width())          # Set the label width to max value to not show hor. scroll bars
-    label.set_text("connect sucess")
-
-def keyboard():
-    upper_kb_map=["#","Q","W","E","R","T","Y","U","I","O","P","Bksp","\n",
-                  "abc","A","S","D","F","G","H","J","K","L","Enter","\n",
-                  "_","-","Z","X","C","V","B","N","M",",",".",":","\n",
-                  "0","1","2","3","4","5","6","7","8","9",""]
-    defalt_kb_map=["#","q","w","e","r","t","y","u","i","o","p","Bksp","\n",
-                   "ABC","a","s","d","f","g","h","j","k","l","Enter","\n",
-                   "_","-","z","x","c","v","b","n","m",",",".",":","\n",
-                   "0","1","2","3","4","5","6","7","8","9",""]
-    btn_index=18;
-    #设置样式
-    scr=lv.obj()
-    kb=lv.kb(scr)
-    #kb.set_cucursor_manage(True)
-    kb.set_map(defalt_kb_map)
-
-    kb.set_style(lv.kb.STYLE.BG, lv.style_transp_tight)
-    kb.set_style(lv.kb.STYLE.BTN_REL, tab_style_rel)
-    kb.set_style(lv.kb.STYLE.BTN_PR, tab_style_pr)
-    lv.btnm.set_btn_width(kb,11,2)
-    lv.btnm.set_btn_width(kb,12,2)
-    lv.btnm.set_btn_width(kb,22,2)
-
-    pwd_ta = lv.ta(scr)
-    pwd_ta.set_text("");
-    pwd_ta.set_pwd_mode(True)
-    pwd_ta.set_one_line(True)
-    pwd_ta.set_width(240 // 2 - 20)
-    pwd_ta.set_pos(5, 20)
-    pwd_label = lv.label(scr)
-    pwd_label.set_text("Password:")
-    pwd_label.align(pwd_ta, lv.ALIGN.OUT_TOP_LEFT, 0, 0)
-    #ta.set_placeholder_text( "sjfowfw")
-
-    # Assign the text area to the keyboard
-    kb.set_ta(pwd_ta)
-    kb.set_cursor_manage(True)
-    cmd = None
-    key_flag = 0
-    lv.scr_load(scr)
-    new_key_once = 0
-    while True:
-        adc = nic.adc()
-        if key_flag == 0:
-            if adc[3] == 15:
-                new_key_once = 1
-                #print(adc[3])
-            if new_key_once == 1:
-                if adc[3] == 7:
-                    cmd = "left"
-                    #print("left")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 13:
-                    cmd = "right"
-                    #print("right")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 14:
-                    cmd = "ok"
-                    #print("ok")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                elif adc[3] == 11:
-                    cmd = "back"
-                    #print("back")
-                    time0 = time.ticks_ms()
-                    new_key_once = 0
-                else:
-                    pass
-        if cmd:
-            if cmd == "back":
-                key_flag = 1
-            taketime = time.ticks_ms() - time0
-        if key_flag == 0:
-            if key_1.value() == 0:
-                cmd = "left"
-                print("---------------------------")
-                time0 = time.ticks_ms()
-            elif key_2.value() == 0:
-                cmd = "right"
-                time0 = time.ticks_ms()
-            elif key_3.value() == 0:
-                cmd = "ok"
-                time0 = time.ticks_ms()
-
-            elif key_4.value() == 0:
-                cmd = "back"
-
-                time0 = time.ticks_ms()
-
-
-        if cmd:
-            key_flag = 1
-            taketime = time.ticks_ms() - time0
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        char = lv.btnm.get_btn_text(kb,btn_index)
-        #ptr = lv.C_Pointer()
-        lv.btnm.set_pressed(kb,btn_index)
-        if key_flag and taketime > 250:
-            if cmd == "left":
-                if btn_index >= 44:
-                    btn_index = 0
-                else:
-                    btn_index += 1
-            elif cmd == "right":
-                if btn_index <= 0:
-                    btn_index = 44
-                else:
-                    btn_index -= 1
-            elif cmd == "ok":
-                #print(char,type(char))
-                if char == "Bksp":
-                    print("enter del")
-                    lv.ta.del_char(pwd_ta)
-                elif char == "ABC":
-                    kb.set_map(upper_kb_map)
-                    lv.btnm.set_btn_width(kb,11,2)
-                    lv.btnm.set_btn_width(kb,12,2)
-                    lv.btnm.set_btn_width(kb,22,2)
-                    btn_index = 18
-                elif char == "abc":
-                    kb.set_map(defalt_kb_map)
-                    lv.btnm.set_btn_width(kb,11,2)
-                    lv.btnm.set_btn_width(kb,12,2)
-                    lv.btnm.set_btn_width(kb,22,2)
-                    btn_index = 18
-                elif char == "Enter":
-                    res = pwd_ta.get_text()
-                    #pwd_ta.set_text("")
-                    ob=delay()
-                    ob1=page()
-
-                    print(res)
-                    vae=res
-                else:
-                    pwd_ta.add_text("%s"%char)
-            else:
-                break
-
-            #print(kb.get_map_array())
-            key_flag,cmd=key_init()
 
 
 def create_template():
@@ -715,29 +520,36 @@ def create_template():
     sub_btn.align(None,lv.ALIGN.IN_TOP_MID,0,30)
     return scr,sub_btn
 
-def create_home_page(parent,index,prm,app,setting,dire):
+def create_home_page(scr,parent,index,prm,app,setting,dire):
     #print("enter home page")
     HOME_TAB_WIDTH = 150
     HOME_TAB_HEIGHT = 100
     prm_btn = create_btn(parent,HOME_TAB_WIDTH,HOME_TAB_HEIGHT,tab_style_rel,tab_style_pr)
     prm_btn.align(None,lv.ALIGN.IN_TOP_LEFT,10,0)
     set_symbol_for_obj(prm_btn,lv.SYMBOL.PLAY)
-    if LAN_flag:
-        set_label_for_obj(prm_btn,"Program")
-    else:
-        ser_label_for_obj(prm_btn,"程序")
+    #set_label_for_obj(prm_btn,"Program")
     app_btn = create_btn(parent,HOME_TAB_WIDTH,HOME_TAB_HEIGHT,tab_style_rel,tab_style_pr)
     app_btn.align(None,lv.ALIGN.IN_TOP_RIGHT,-10,0)
     set_symbol_for_obj(app_btn,lv.SYMBOL.LIST)
-    set_label_for_obj(app_btn,"App")
+    #set_label_for_obj(app_btn,"App")
     set_btn = create_btn(parent,HOME_TAB_WIDTH,HOME_TAB_HEIGHT,tab_style_rel,tab_style_pr)
     set_btn.align(None,lv.ALIGN.IN_BOTTOM_RIGHT,-10,-10)
     set_symbol_for_obj(set_btn,lv.SYMBOL.SETTINGS)
-    set_label_for_obj(set_btn,"Setting")
+    #set_label_for_obj(set_btn,"Setting")
     file_btn = create_btn(parent,HOME_TAB_WIDTH,HOME_TAB_HEIGHT,tab_style_rel,tab_style_pr)
     file_btn.align(None,lv.ALIGN.IN_BOTTOM_LEFT,10,-10)
     set_symbol_for_obj(file_btn,lv.SYMBOL.DIRECTORY)
-    set_label_for_obj(file_btn,"File")
+    #set_label_for_obj(file_btn,"File")
+    if LAN_flag:
+        set_label_for_obj(prm_btn,"Program")
+        set_label_for_obj(app_btn,"App")
+        set_label_for_obj(set_btn,"Setting")
+        set_label_for_obj(file_btn,"Directory")
+    else:
+        set_label_for_obj(prm_btn,"程序")
+        set_label_for_obj(app_btn,"应用")
+        set_label_for_obj(set_btn,"设置")
+        set_label_for_obj(file_btn,"文件")
     if index == 0:
         lv.btn.set_state(prm_btn,lv.btn.STATE.PR)
     elif index == 1:
@@ -775,31 +587,45 @@ def create_set_page1(parent,index,mute,buth,wifi):
     mute_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     mute_btn.align(None,lv.ALIGN.IN_TOP_LEFT,10,0)
     set_symbol_for_obj(mute_btn,lv.SYMBOL.MUTE)
-    set_label_for_obj(mute_btn,"Mute")
+    #set_label_for_obj(mute_btn,"Mute")
     #power 按钮
     power_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     power_btn.align(None,lv.ALIGN.IN_TOP_MID,0,0)
     set_symbol_for_obj(power_btn,lv.SYMBOL.POWER)
-    set_label_for_obj(power_btn,"Power")
+    #set_label_for_obj(power_btn,"Power")
     #bu 按钮
     bu_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     bu_btn.align(None,lv.ALIGN.IN_TOP_RIGHT,-10,0)
     set_symbol_for_obj(bu_btn,lv.SYMBOL.BLUETOOTH)
-    set_label_for_obj(bu_btn,"Bluetooth")
+    #set_label_for_obj(bu_btn,"Bluetooth")
     #wf 按钮
     wifi_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     wifi_btn.align(None,lv.ALIGN.IN_BOTTOM_RIGHT,-10,-10)
     set_symbol_for_obj(wifi_btn,lv.SYMBOL.WIFI)
-    set_label_for_obj(wifi_btn,"Wifi")
+    #set_label_for_obj(wifi_btn,"Wifi")
     name_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     name_btn.align(None,lv.ALIGN.IN_BOTTOM_MID,0,-10)
     set_symbol_for_obj(name_btn,lv.SYMBOL.EDIT)
-    set_label_for_obj(name_btn,"Name")
+    #set_label_for_obj(name_btn,"Name")
     info_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     info_btn.align(None,lv.ALIGN.IN_BOTTOM_LEFT,10,-10)
     set_symbol_for_obj(info_btn,lv.SYMBOL.DRIVE)
-    set_label_for_obj(info_btn,"Info")
-    if 5 == 0:
+    #set_label_for_obj(info_btn,"Info")
+    if LAN_flag:
+        set_label_for_obj(mute_btn,"Mute")
+        set_label_for_obj(power_btn,"Power")
+        set_label_for_obj(bu_btn,"Bluetooth")
+        set_label_for_obj(wifi_btn,"Wifi")
+        set_label_for_obj(name_btn,"Name")
+        set_label_for_obj(info_btn,"Info")
+    else:
+        set_label_for_obj(mute_btn,"音量")
+        set_label_for_obj(power_btn,"电源")
+        set_label_for_obj(bu_btn,"蓝牙")
+        set_label_for_obj(wifi_btn,"无线")
+        set_label_for_obj(name_btn,"设备名称")
+        set_label_for_obj(info_btn,"信息")
+    if index == 0:
         lv.btn.set_state(mute_btn,lv.btn.STATE.PR)
     elif index == 1:
         lv.btn.set_state(power_btn,lv.btn.STATE.PR)
@@ -831,15 +657,23 @@ def create_set_page2(parent,index,light):
     lan_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     lan_btn.align(None,lv.ALIGN.IN_TOP_LEFT,10,0)
     set_symbol_for_obj(lan_btn,lv.SYMBOL.LOOP)
-    set_label_for_obj(lan_btn,"Language")
+    #set_label_for_obj(lan_btn,"Language")
     light_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     light_btn.align(None,lv.ALIGN.IN_TOP_MID,0,0)
     set_symbol_for_obj(light_btn,lv.SYMBOL.EJECT)
-    set_label_for_obj(light_btn,"Light")
+    #set_label_for_obj(light_btn,"Light")
     dev_btn = create_btn(parent,TAB_WIDTH,TAB_HEIGHT,tab_style_rel,tab_style_pr)
     dev_btn.align(None,lv.ALIGN.IN_TOP_RIGHT,-10,0)
     set_symbol_for_obj(dev_btn,lv.SYMBOL.LEFT)
-    set_label_for_obj(dev_btn,"Devices")
+    #set_label_for_obj(dev_btn,"Devices")
+    if LAN_flag:
+        set_label_for_obj(lan_btn,"Language")
+        set_label_for_obj(light_btn,"Light")
+        set_label_for_obj(dev_btn,"Devices")
+    else:
+        set_label_for_obj(lan_btn,"语言")
+        set_label_for_obj(light_btn,"亮度")
+        set_label_for_obj(dev_btn,"设备")
     if index == 6:
         lv.btn.set_state(lan_btn,lv.btn.STATE.PR)
     elif index == 7:
@@ -888,6 +722,48 @@ def create_prm_page(parent,index):
     cur_scr = scr.get_screen()
     lv.scr_load(scr)
     return cur_scr
+def create_keyboard_page():
+    scr = lv.obj()
+    # Create styles for the keyboard
+    rel_style = lv.style_t()
+    pr_style  = lv.style_t()
+
+    lv.style_copy(rel_style, lv.style_btn_rel)
+    rel_style.body.radius = 0
+    rel_style.body.border.width = 1
+    lv.style_copy(pr_style, lv.style_btn_pr)
+    pr_style.body.radius = 0
+    pr_style.body.border.width = 1
+    # Create a keyboard and apply the styles
+    kb = lv.kb(scr)
+    kb.set_cursor_manage(True)
+    kb.set_map(defalt_kb_map)
+    kb.set_style(lv.kb.STYLE.BG, lv.style_transp_tight)
+    kb.set_style(lv.kb.STYLE.BTN_REL, rel_style)
+    kb.set_style(lv.kb.STYLE.BTN_PR, pr_style)
+
+    #lv.btnm.set_btn_width(kb,0,1)
+    lv.btnm.set_btn_width(kb,11,2)
+    lv.btnm.set_btn_width(kb,12,2)
+    lv.btnm.set_btn_width(kb,22,2)
+
+    pwd_ta = lv.ta(scr)
+    pwd_ta.set_text("");
+    pwd_ta.set_pwd_mode(True)
+    pwd_ta.set_one_line(True)
+    pwd_ta.set_width(240 // 2 - 20)
+    pwd_ta.set_pos(5, 20)
+    # Create a label and position it above the text box
+    pwd_label = lv.label(scr)
+    pwd_label.set_text("Password:")
+    pwd_label.align(pwd_ta, lv.ALIGN.OUT_TOP_LEFT, 0, 0)
+    #ta.set_placeholder_text( "sjfowfw")
+    # Assign the text area to the keyboard
+    kb.set_ta(pwd_ta)
+    kb.set_cursor_manage(True)
+    cur_scr = scr.get_screen()
+    lv.scr_load(scr)
+    return cur_scr,kb,btn_index,pwd_ta
 def creat_preload(parent,sw_int,lw_int,clo_hex=0xFF0000,time_ms=2000,st=lv.style_plain):
     pre = lv.preload(parent)
     st.line.width = lw_int
@@ -897,39 +773,11 @@ def creat_preload(parent,sw_int,lw_int,clo_hex=0xFF0000,time_ms=2000,st=lv.style
     pre.set_size(sw_int,sw_int)
     pre.set_style(0,style)
 
-
-
-#program page variable init
-prm = Program()
-app = App()
-setting = Setting()
-dire = Dir()
-#setting page variable init
-wifi = WB_tools()
-
-aps = nic.scan()
-#for ap in aps:
-    #print("SSID:{:}".format(ap[0]))
-#wifi.ls[0] =
-mute = ML_tools()
-light = ML_tools()
-buth = WB_tools()
-lan = Language()
-power = Power()
-info = Info()
-
-btn_index = 0
-power_flag = 0
-
-home_flag = 1
-set_flag = 0
-prm_flag = 0
-app_flag = 0
-dir_flag = 0
-gpio_flag = 0
-new_key_once = 0
-start_time = time.ticks_ms()
-while True:
+def key_detect():
+    global cmd
+    global time0
+    global gpio_flag
+    global new_key_once
     gpio_flag+=1
     if gpio_flag >=200:
         gpio_flag = 0
@@ -967,46 +815,83 @@ while True:
                 new_key_once = 0
             else:
                 pass
-    if cmd:
-        key_flag = 1
-        taketime = time.ticks_ms() - time0
+
+#program page variable init
+prm = Program()
+app = App()
+setting = Setting()
+dire = Dir()
+#setting page variable init
+wifi = WB_tools()
+mute = ML_tools()
+light = ML_tools()
+buth = WB_tools()
+lan = Language()
+power = Power()
+info = Info()
+
+btn_index = 0
+power_flag = 0
+home_flag = 1
+set_flag = 0
+prm_flag = 0
+app_flag = 0
+dir_flag = 0
+keyboard_flag = 0
+gpio_flag = 0
+new_key_noce = 0
+start_time = time.ticks_ms()
+
+
+
+while True:
+    wifi_scan_result = ["q","w"]
+    buth_scan_result = []
     if home_flag:
         scr,sub_btn = create_template()
-        cur_scr,btn_index,prm,app,setting,dire = create_home_page(sub_btn,btn_index,prm,app,setting,dire)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime>250:
-            #print("******")
-            if cmd == "right":
-                if btn_index >= 3:
-                    btn_index = 0
-                else:
-                    btn_index += 1
-            elif cmd == "left":
-                if btn_index == 0:
-                    btn_index = 3
-                else:
-                    btn_index -= 1
-            elif cmd == "ok":
-                home_flag = 0
-                if btn_index ==0:
-                    prm_flag = 1
-                    prm.index = 0
-                elif btn_index ==1:
-                    app_flag = 1
-                    #app.index = 0
-                elif btn_index == 2:
-                    set_flag = 1
-                    setting.index = 0
-                elif btn_index == 3:
-                    dir_flag = 1
-                else:
-                    print("error")
-            elif cmd == "back":
-                #print("this is home page")
-                pass
-            key_flag,cmd = key_init()
+        cur_scr,btn_index,prm,app,setting,dire = create_home_page(scr,sub_btn,btn_index,prm,app,setting,dire)
+        FLAG = 1
+        print("-----------------------------------------")
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime>250:
+                FLAG = 0
+                print("******")
+                if cmd == "right":
+                    if btn_index >= 3:
+                        btn_index = 0
+                    else:
+                        btn_index += 1
+                elif cmd == "left":
+                    if btn_index == 0:
+                        btn_index = 3
+                    else:
+                        btn_index -= 1
+                elif cmd == "ok":
+                    home_flag = 0
+                    if btn_index ==0:
+                        prm_flag = 1
+                        prm.index = 0
+                    elif btn_index ==1:
+                        app_flag = 1
+                        #app.index = 0
+                    elif btn_index == 2:
+                        set_flag = 1
+                        setting.index = 0
+                    elif btn_index == 3:
+                        dir_flag = 1
+                    else:
+                        print("error")
+                elif cmd == "back":
+                    #print("this is home page")
+                    pass
+        key_init()
         cur_scr.delete()
     elif set_flag:
         scr,sub_btn = create_template()
@@ -1014,136 +899,149 @@ while True:
             cur_scr,mute,buth,wifi = create_set_page1(sub_btn,setting.index,mute,buth,wifi)
         elif setting.index <= 8:
             cur_scr,light = create_set_page2(sub_btn,setting.index,light)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if mute.chart:
-            #print("enter mute in_de_crease control")
-            if key_flag :
-                if cmd == "right":
-                    mute.cm_flag = 1
-                    if taketime > 250:
-                        if mute.bar_value >= 100:
-                            mute.bar_value = 100
-                        else:
+        FLAG = 1
+        print("-----------------------------------------")
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if mute.chart:
+                #print("enter mute in_de_crease control")
+                if key_flag :
+                    if cmd == "right":
+                        mute.cm_flag = 1
+                        if taketime > 250:
+                            FLAG = 0
                             mute.bar_value += 10
-                            if mute.bar_value > 100:
+                            if mute.bar_value >= 100:
                                 mute.bar_value = 100
-                        mute.cm_flag = 3
-                        key_flag,cmd = key_init()
-                elif cmd == "left":
-                    mute.cm_flag = 2
-                    if taketime > 250:
-                        if mute.bar_value <= 0:
-                            mute.bar_value = 0
-                        else:
+                            mute.cm_flag = 3
+                            key_init()
+                    elif cmd == "left":
+                        mute.cm_flag = 2
+                        if taketime > 250:
+                            FLAG = 0
                             mute.bar_value -= 10
-                            if mute.bar_value < 0:
+                            if mute.bar_value <= 0:
                                 mute.bar_value = 0
-                        mute.cm_flag = 3
-                        key_flag,cmd = key_init()
-                elif cmd == "back" and taketime > 250:
-                    mute.chart = 0
-                    key_flag,cmd = key_init()
-                elif cmd == "ok" and taketime > 250:
-                    key_flag,cmd = key_init()
-            cur_scr.delete()
-            continue
-        elif light.chart:
-            #print("enter light control bar")
-            if key_flag:
-                if cmd == "right":
-                    light.cm_flag = 1
-                    if taketime > 250:
-                        if light.bar_value >= 100:
-                            light.bar_value = 100
-                        else:
-                            light.bar_value += 25
-                            if light.bar_value > 100:
+                            mute.cm_flag = 3
+                            key_init()
+                    elif cmd == "back" and taketime > 250:
+                        FLAG = 0
+                        mute.chart = 0
+                        key_init()
+                    elif cmd == "ok" and taketime > 250:
+                        FLAG = 0
+                        key_init()
+            elif light.chart:
+                #print("enter light control bar")
+                if key_flag:
+                    if cmd == "right":
+                        light.cm_flag = 1
+                        if taketime > 250:
+                            FLAG = 0
+                            if light.bar_value >= 100:
                                 light.bar_value = 100
-                        light.cm_flag = 3
-                        key_flag,cmd = key_init()
-                elif cmd == "left":
-                    light.cm_flag = 2
-                    if taketime > 250:
-                        if light.bar_value <= 0:
-                            light.bar_value = 0
-                        else:
-                            light.bar_value -= 25
-                            if light.bar_value < 0 :
+                            else:
+                                light.bar_value += 25
+                                if light.bar_value > 100:
+                                    light.bar_value = 100
+                            light.cm_flag = 3
+                            key_init()
+                    elif cmd == "left":
+                        light.cm_flag = 2
+                        if taketime > 250:
+                            FLAG = 0
+                            if light.bar_value <= 0:
                                 light.bar_value = 0
-                        light.cm_flag = 3
-                        key_flag,cmd = key_init()
-                elif cmd == "back" and taketime > 250:
-                    light.chart = 0
-                    key_flag,cmd = key_init()
-                elif cmd == "ok" and taketime > 250:
-                    key_flag,cmd = key_init()
-            cur_scr.delete()
-            continue
-        if key_flag and taketime > 250:
-            if power_flag:
-                pass
-            if cmd == "right":
-                if setting.index >= 8:
-                    setting.index = 0
-                else:
-                    setting.index += 1
-            elif cmd == "left":
-                if setting.index <= 0:
-                    setting.index = 8
-                else:
-                    setting.index -= 1
-            elif cmd == "ok":
-                if setting.index == 0:
-                    mute.chart = True
-                elif setting.index == 1:
-                    power.flag = 1
-                    print("power")
-                elif setting.index == 2:
-                    buth.toggle_flag = 1
+                            else:
+                                light.bar_value -= 25
+                                if light.bar_value < 0 :
+                                    light.bar_value = 0
+                            light.cm_flag = 3
+                            key_init()
+                    elif cmd == "back" and taketime > 250:
+                        FLAG = 0
+                        light.chart = 0
+                        key_init()
+                    elif cmd == "ok" and taketime > 250:
+                        FLAG = 0
+                        key_init()
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if power_flag:
+                    pass
+                if cmd == "right":
+                    if setting.index >= 8:
+                        setting.index = 0
+                    else:
+                        setting.index += 1
+                elif cmd == "left":
+                    if setting.index <= 0:
+                        setting.index = 8
+                    else:
+                        setting.index -= 1
+                elif cmd == "ok":
+                    if setting.index == 0:
+                        mute.chart = True
+                    elif setting.index == 1:
+                        power.flag = 1
+                        print("power")
+                    elif setting.index == 2:
+                        buth.toggle_flag = 1
+                        set_flag = 0
+                    elif setting.index == 3:
+                        wifi.toggle_flag = 1
+                        set_flag = 0
+                    elif setting.index == 5:
+                        info.page_flag = 1
+                        set_flag = 0
+                    elif setting.index == 6:
+                        lan.toggle_flag = 1
+                        set_flag = 0
+                    elif setting.index == 7:
+                        light.chart = True
+                    else:
+                        print("the block is empty now")
+                elif cmd == "back":
                     set_flag = 0
-                elif setting.index == 3:
-                    wifi.toggle_flag = 1
-                    set_flag = 0
-                elif setting.index == 5:
-                    info.page_flag = 1
-                    set_flag = 0
-                elif setting.index == 6:
-                    lan.toggle_flag = 1
-                    set_flag = 0
-                elif setting.index == 7:
-                    light.chart = True
-                else:
-                    print("the block is empty now")
-            elif cmd == "back":
-                set_flag = 0
-                home_flag = 1
-            key_flag,cmd = key_init()
+                    home_flag = 1
+                key_init()
         cur_scr.delete()
     elif prm_flag:
         scr,sub_btn = create_template()
         cur_scr = create_prm_page(sub_btn,prm.index)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime > 250:
-            if cmd == "left":
-                if prm.index == 2:
-                    prm.index = 0
-                else:
-                    prm.index += 1
-            elif cmd == "right":
-                if prm.index == 0:
-                    prm.index = 2
-                else:
-                    prm.index -= 1
-            elif cmd == "ok":
-                pass
-            elif cmd == "back":
-                prm_flag = 0
-                home_flag = 1
-            key_flag,cmd = key_init()
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if cmd == "right":
+                    if prm.index == 2:
+                        prm.index = 0
+                    else:
+                        prm.index += 1
+                elif cmd == "left":
+                    if prm.index == 0:
+                        prm.index = 2
+                    else:
+                        prm.index -= 1
+                elif cmd == "ok":
+                    pass
+                elif cmd == "back":
+                    prm_flag = 0
+                    home_flag = 1
+                key_init()
         cur_scr.delete()
     elif app_flag:
         print("app")
@@ -1154,142 +1052,275 @@ while True:
         dir_flag = 0
         home_flag = 1
     elif wifi.toggle_flag:
-        #print("wifi swich page")
+        print("wifi swich page")
         scr,sub_btn = create_template()
         #创建wifi开关
         cur_scr = select_box(scr,sub_btn,"wifi",wifi.state,wifi.sw_flag,wifi.ls,wifi.index)
         #cur_scr = toggle_swich_page(scr,sub_btn,"Wifi",wifi.state,wifi.names,wifi.list_index)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime > 250:
-            if wifi.sw_flag == 0:
-                if cmd == "ok" :
-                    if wifi.state == 0:
-                        wifi.state = 1
-                        wifi.flag =1
+        FLAG = 1
+        print("-----------------------------------------")
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if wifi.sw_flag == 0:
+                    if cmd == "ok" :
+                        if wifi.state == 0:
+                            wifi.state = 1
+                            wifi.flag =1
+                            wifi.ls = wifi_scan_result
+                        else:
+                            wifi.state = 0
+                            wifi.flag = 0
+                            wifi.index = 0
+                            wifi.ls = []
+                    elif cmd == "back":
+                        wifi.toggle_flag = 0
+                        set_flag = 1
+                    elif cmd == "right":
+                        if wifi.state:
+                            wifi.sw_flag = 1
+                            if len(wifi.ls):
+                                wifi.index = 1
+                            else:
+                                wifi.index = 0
+                else:
+                    if len(wifi.ls):
+                        if cmd == "right":
+                            if wifi.index == len(wifi.ls):
+                                pass
+                            else:
+                                wifi.index += 1
+                        elif cmd == "left":
+                            if wifi.index == 1:
+                                wifi.sw_flag = 0
+                                wifi.index = 0
+                            else:
+                                wifi.index -= 1
+                        elif cmd == "ok":
+                            wifi.toggle_flag = 0
+                            keyboard_flag =  1
+                        elif cmd == "back":
+                            wifi.toggle_flag = 0
+                            set_flag = 1
                     else:
-                        wifi.state = 0
-                        wifi.flag = 0
-                        wifi.index = 0
-                elif cmd == "back":
-                    wifi.toggle_flag = 0
-                    set_flag = 1
-                elif cmd == "right":
-                    if wifi.state:
-                        wifi.sw_flag = 1
-                        wifi.index = 1
-            else:
-                if cmd == "right":
-                    if wifi.index == 4:
-                        pass
-                    else:
-                        wifi.index += 1
-                elif cmd == "left":
-                    if wifi.index == 1:
-                        wifi.sw_flag = 0
-                        wifi.index = 0
-                    else:
-                        wifi.index -= 1
-                elif cmd == "ok":
-                    #进入wifi密码输入页面
-
-
-
-                    src=keyboard()
-
-                elif cmd == "back":
-                    wifi.toggle_flag = 0
-                    set_flag = 1
-            key_flag,cmd = key_init()
+                        if cmd == "back":
+                            wifi.toggle_flag = 0
+                            set_flag = 1
+                        elif cmd == "ok":
+                            if wifi.state == 0:
+                                wifi.state = 1
+                                wifi.flag =1
+                                wifi.ls = wifi_scan_result
+                            else:
+                                wifi.state = 0
+                                wifi.flag = 0
+                                wifi.index = 0
+                                wifi.ls = []
+                key_init()
         cur_scr.delete()
     elif buth.toggle_flag:
         #print("buth swich page")
         scr,sub_btn = create_template()
         #cur_scr = toggle_swich_page(scr,sub_btn,"BLUETOOTH",buth.state,buth.names,buth.list_index)
         cur_scr = select_box(scr,sub_btn,"Bluetooth",buth.state,buth.sw_flag,buth.ls,buth.index)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime > 250:
-            if buth.sw_flag == 0:
-                if cmd == "ok" :
-                    if buth.state == 0:
-                        buth.state = 1
-                        buth.flag = 1
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if buth.sw_flag == 0:
+                    if cmd == "ok" :
+                        if buth.state == 0:
+                            buth.state = 1
+                            buth.flag = 1
+                            buth.ls = buth_scan_result
+                        else:
+                            buth.state = 0
+                            buth.flag = 0
+                            buth.index = 0
+                            buth.ls = []
+                    elif cmd == "back":
+                        buth.toggle_flag = 0
+                        set_flag = 1
+                    elif cmd == "right":
+                        if buth.state :
+                            buth.sw_flag = 1
+                            if len(buth.ls):
+                                buth.index = 1
+                            else:
+                                buth.index = 0
+                else:
+                    if len(buth.ls):
+                        if cmd == "right":
+                            if buth.index == len(buth.ls):
+                                pass
+                            else:
+                                buth.index += 1
+                        elif cmd == "left":
+                            if buth.index == 1:
+                                buth.sw_flag = 0
+                                buth.index = 0
+                            else:
+                                buth.index -= 1
+                        elif cmd == "ok":
+                            #进入buth密码输入页面
+                            pass
+                        elif cmd == "back":
+                            buth.toggle_flag = 0
+                            set_flag = 1
                     else:
-                        buth.state = 0
-                        buth.flag = 0
-                        buth.index = 0
-                elif cmd == "back":
-                    buth.toggle_flag = 0
-                    set_flag = 1
-                elif cmd == "right":
-                    if buth.state :
-                        buth.sw_flag = 1
-                        buth.index = 1
-            else:
-                if cmd == "right":
-                    if buth.index == 4:
-                        pass
-                    else:
-                        buth.index += 1
-                elif cmd == "left":
-                    if buth.index == 1:
-                        buth.sw_flag = 0
-                        buth.index = 0
-                    else:
-                        buth.index -= 1
-                elif cmd == "ok":
-                    #进入buth密码输入页面
-                    pass
-                elif cmd == "back":
-                    buth.toggle_flag = 0
-                    set_flag = 1
-            key_flag,cmd = key_init()
+                        if cmd == "back":
+                            buth.toggle_flag = 0
+                            set_flag = 1
+                        elif cmd == "ok" :
+                            if buth.state == 0:
+                                buth.state = 1
+                                buth.flag = 1
+                                buth.ls = buth_scan_result
+                            else:
+                                buth.state = 0
+                                buth.flag = 0
+                                buth.index = 0
+                                buth.ls = []
+                key_init()
         cur_scr.delete()
     elif lan.toggle_flag:
         scr,sub_btn = create_template()
         cur_scr = lan_ch_page(scr,sub_btn,lan.names,lan.index)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime > 250:
-            if cmd == "left" or cmd == "right":
-                if lan.index == 0:
-                    lan.index =1
-                else:
-                    lan.index = 0
-            elif cmd == "ok":
-                if lan.index == 0:
-                    lan.flag = 0
-                elif lan.index == 1:
-                    lan.flag = 1
-            elif cmd == "back":
-                lan.toggle_flag = 0
-                set_flag = 1
-            key_flag,cmd = key_init()
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if cmd == "left" or cmd == "right":
+                    if lan.index == 0:
+                        lan.index =1
+                    else:
+                        lan.index = 0
+                elif cmd == "ok":
+                    if lan.index == 0:
+                        lan.flag = 0
+                    elif lan.index == 1:
+                        lan.flag = 1
+                elif cmd == "back":
+                    lan.toggle_flag = 0
+                    set_flag = 1
+        key_init()
         cur_scr.delete()
     elif info.page_flag:
         scr,sub_btn = create_template()
         btn = create_btn(sub_btn,100,100)
         label = set_label_for_obj(btn,"open sensor")
-        cur_scr = scr.get_screen()
         lv.scr_load(scr)
-        lv.tick_inc(5)
-        lv.task_handler()
-        tim = time.ticks_ms()
-        if key_flag and taketime > 250:
-            if cmd == "ok":
-                cur_scr.delete()
-                res = open_sensor()
-                if res:
-                    key_flag,cmd = key_init()
-                continue
-            elif cmd == "back" and taketime > 250:
-                info.page_flag = 0
-                set_flag = 1
-                key_flag,cmd = key_init()
+        cur_scr = scr.get_screen()
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if cmd == "ok":
+                    cur_scr.delete()
+                    key_init()
+                    res = open_sensor()
+                    if res:
+                        key_init()
+                    print(FLAG,"---------------")
+                elif cmd == "back" and taketime > 250:
+                    info.page_flag = 0
+                    set_flag = 1
+                    key_init()
+                    cur_scr.delete()
+    elif keyboard_flag:
+        flag = 1
+        btn_index = 18
+        k_style = lv.style_t()
+        upper_kb_map=["#","Q","W","E","R","T","Y","U","I","O","P","Bksp","\n",
+                       "abc","A","S","D","F","G","H","J","K","L","Enter","\n",
+                       "_","-","Z","X","C","V","B","N","M",",",".",":","\n",
+                       "0","1","2","3","4","5","6","7","8","9",""]
+        defalt_kb_map = ["#","q","w","e","r","t","y","u","i","o","p","Bksp","\n",
+                        "ABC","a","s","d","f","g","h","j","k","l","Enter","\n",
+                        "_","-","z","x","c","v","b","n","m",",",".",":","\n",
+                        "0","1","2","3","4","5","6","7","8","9",""]
+        cur_scr,kb,btn_index,pwd_ta = create_keyboard_page()
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            char = lv.btnm.get_btn_text(kb,btn_index)
+            lv.btnm.set_pressed(kb,btn_index)
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                if cmd == "right":
+                    if btn_index >= 44:
+                        btn_index = 0
+                    else:
+                        btn_index += 1
+                elif cmd == "left":
+                    if btn_index <= 0:
+                        btn_index = 44
+                    else:
+                        btn_index -= 1
+                elif cmd == "ok":
+                    #print(char,type(char))
+                    if char == "Bksp":
+                        print("enter del")
+                        lv.ta.del_char(pwd_ta)
+                    elif char == "ABC":
+                        kb.set_map(upper_kb_map)
+                        lv.btnm.set_btn_width(kb,11,2)
+                        lv.btnm.set_btn_width(kb,12,2)
+                        lv.btnm.set_btn_width(kb,22,2)
+                        btn_index = 18
+                    elif char == "abc":
+                        kb.set_map(defalt_kb_map)
+                        lv.btnm.set_btn_width(kb,11,2)
+                        lv.btnm.set_btn_width(kb,12,2)
+                        lv.btnm.set_btn_width(kb,22,2)
+                        btn_index = 18
+                    elif char == "Enter":
+                        res = pwd_ta.get_text()
+                        pwd_ta.set_text("")
+                        print(res)
+                        FLAG = 0
+                        keyboard_flag = 0
+                        wifi.toggle_flag = 1
+                    else:
+                        pwd_ta.add_text("%s"%char)
+                elif cmd == "back":
+                    FLAG = 0
+                    keyboard_flag = 0
+                    wifi.toggle_flag = 1
+                key_init()
         cur_scr.delete()
     while time.ticks_ms()-tim < 0.0005:
         pass
