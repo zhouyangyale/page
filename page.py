@@ -846,7 +846,7 @@ aps = nic.scan()
 while True:
 
     wifi_scan_result = []
-    buth_scan_result = ["q","w"]
+    buth_scan_result = []
     i = 0;
     for ap in aps:
 #print("SSID:{:}".format(ap[0]))
@@ -961,13 +961,13 @@ while True:
                         if wifi.toggle_flag:
                             wifi_name = wifi.name
                             wifi_password = res
-                            print(wifi_name,wifi_password)
-                            time.sleep(5)
+                            #print(wifi_name,wifi_password)
+                            #time.sleep(5)
                         elif buth.toggle_flag:
                             buth_name = buth.name
                             buth_password = res
-                            print(buth_name,buth_password)
-                            time.sleep(5)
+                            #print(buth_name,buth_password)
+                            #time.sleep(5)
                         #buth.cont_flag = 1
                         #wifi.toggle_flag = 1
                     else:
