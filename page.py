@@ -842,11 +842,16 @@ gpio_flag = 0
 new_key_noce = 0
 start_time = time.ticks_ms()
 
-
-
+aps = nic.scan()
 while True:
+
     wifi_scan_result = ["q","w"]
     buth_scan_result = []
+    i = 0;
+    for ap in aps:
+#print("SSID:{:}".format(ap[0]))
+      wifi_scan_result[i] = ap[0]
+      i = i + 1
     if home_flag:
         scr,sub_btn = create_template()
         cur_scr,btn_index,prm,app,setting,dire = create_home_page(scr,sub_btn,btn_index,prm,app,setting,dire)
