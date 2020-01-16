@@ -37,14 +37,14 @@ i2c = I2C(I2C.I2C0, freq=400000, scl=30, sda=31)
 lcd.init()
 lv.init()
 
-fm.register(board_info.JTAG_TCK, fm.fpioa.GPIO0)
-key_1=GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
-fm.register(board_info.JTAG_TDI, fm.fpioa.GPIO1)
-key_2=GPIO(GPIO.GPIO1,GPIO.IN,GPIO.PULL_UP)
-fm.register(21, fm.fpioa.GPIO2)
-key_3=GPIO(GPIO.GPIO2,GPIO.IN,GPIO.PULL_UP)
-fm.register(22, fm.fpioa.GPIO3)
-key_4=GPIO(GPIO.GPIO3,GPIO.IN,GPIO.PULL_UP)
+#fm.register(board_info.JTAG_TCK, fm.fpioa.GPIO0)
+#key_1=GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
+#fm.register(board_info.JTAG_TDI, fm.fpioa.GPIO1)
+#key_2=GPIO(GPIO.GPIO1,GPIO.IN,GPIO.PULL_UP)
+#fm.register(21, fm.fpioa.GPIO2)
+#key_3=GPIO(GPIO.GPIO2,GPIO.IN,GPIO.PULL_UP)
+#fm.register(22, fm.fpioa.GPIO3)
+#key_4=GPIO(GPIO.GPIO3,GPIO.IN,GPIO.PULL_UP)
 
 fm.register(10, fm.fpioa.GPIO4)
 key_5=GPIO(GPIO.GPIO4,GPIO.IN,GPIO.PULL_DOWN)
@@ -191,9 +191,9 @@ class WB_tools():
     def __init__(self):
         self.flag = 0
         self.sw_flag = 0
-        self.cm_flag = 1
         self.state = 0
         self.toggle_flag = 0
+        self.cont_flag = 0
         self.index = 0
         self.preloading = 0
         self.ls = []
@@ -234,12 +234,15 @@ class Control_bar():
         self.pbtn_state = lv.btn.STATE.REL
         self.plus_state = lv.btn.STATE.REL
         self.minus_state = lv.btn.STATE.REL
+
+#press key after a period time,clear the state value,recover init value
 def key_init():
     global key_flag
     global cmd
     key_flag = 0
     cmd = 0
 
+#create a btn in the top of screen ,which is uesed to place wifi,bluetooth,battery sign
 def create_top_state_btn(parent):
     top_state_btn = lv.btn(parent)
     top_state_btn.set_layout(lv.LAYOUT.OFF)
@@ -314,7 +317,7 @@ parameter    parent is the battery btn's parents' btn's name
              layout_flag control the layout state of the button ,default is lv.LAYOUT.ON
 *****************************************************************************
 '''
-def create_btn(parent,width,height,style_rel=lv.style_btn_rel,style_pr=lv.style_btn_pr,layout_flag=lv.LAYOUT.CENTER):
+def create_btn(parent,width=100,height=100,style_rel=lv.style_btn_rel,style_pr=lv.style_btn_pr,layout_flag=lv.LAYOUT.CENTER):
     name = lv.btn(parent)
     name.set_size(width,height)
     name.set_style(0,style_rel)
@@ -326,7 +329,7 @@ def create_btn(parent,width,height,style_rel=lv.style_btn_rel,style_pr=lv.style_
 *****************************************************************************
 set symbol for obj
 parameter    parent   parent  obj
-             symbol   symbol type of the obj
+             symbol   symbol type of the obj(lv.SYMBOL.)
 *****************************************************************************
 '''
 def set_symbol_for_obj(parent,symbol):
@@ -345,14 +348,6 @@ def open_sensor():
     global key_flag
     global cmd
     global time0
-    #fm.register(board_info.JTAG_TCK, fm.fpioa.GPIO0)
-    #key_1=GPIO(GPIO.GPIO0,GPIO.IN,GPIO.PULL_UP)
-    #fm.register(board_info.JTAG_TDI, fm.fpioa.GPIO1)
-    #key_2=GPIO(GPIO.GPIO1,GPIO.IN,GPIO.PULL_UP)
-    #fm.register(21, fm.fpioa.GPIO2)
-    #key_3=GPIO(GPIO.GPIO2,GPIO.IN,GPIO.PULL_UP)
-    #fm.register(22, fm.fpioa.GPIO3)
-    #key_4=GPIO(GPIO.GPIO3,GPIO.IN,GPIO.PULL_UP)
 
     lcd.init()
     sensor.reset()
@@ -379,12 +374,14 @@ def open_sensor():
         elif cmd == "ok":
             key_init()
 
+#set text label for btn obj,labelname is a string
 def set_label_for_obj(parent,labelname):
     label = lv.label(parent)
     label.set_text(labelname)
     label.align(None,lv.ALIGN.CENTER,0,0)
     return label
 
+#create a lvgl.sw ,not used in current
 def create_swich_btn(parent,off_style,on_style):
     sw = lv.sw(parent)
     sw.align(None,lv.ALIGN.CENTER,0,0)
@@ -392,6 +389,7 @@ def create_swich_btn(parent,off_style,on_style):
     sw.set_style(lv.sw.STYLE.KNOB_ON,on_style)
     return sw
 
+#create a lvgl.list,with a list show a series similar content
 def create_list(parent,namels,index):
     ls_width = 320
     ls_height = 240
@@ -841,16 +839,17 @@ keyboard_flag = 0
 gpio_flag = 0
 new_key_noce = 0
 start_time = time.ticks_ms()
+chart_cont_starttime = 0
 
 aps = nic.scan()
 while True:
 
-    wifi_scan_result = ["q","w"]
+    wifi_scan_result = []
     buth_scan_result = []
     i = 0;
     for ap in aps:
 #print("SSID:{:}".format(ap[0]))
-      wifi_scan_result[i] = ap[0]
+      wifi_scan_result.append(ap[0])
       i = i + 1
     if home_flag:
         scr,sub_btn = create_template()
@@ -1061,6 +1060,20 @@ while True:
         scr,sub_btn = create_template()
         #创建wifi开关
         cur_scr = select_box(scr,sub_btn,"wifi",wifi.state,wifi.sw_flag,wifi.ls,wifi.index)
+        if wifi.cont_flag == 1:
+            chart_cont_starttime = time.ticks_ms()
+            btn = lv.btn(cur_scr)
+            btn.set_size(100,100)
+            btn.align(None,lv.ALIGN.CENTER,0,0)
+            label = lv.label(btn)
+            label.set_text("success")
+        elif wifi.cont_flag == 2:
+            chart_cont_starttime = time.ticks_ms()
+            btn = lv.btn(cur_scr)
+            btn.set_size(100,100)
+            btn.align(None,lv.ALIGN.CENTER,0,0)
+            label = lv.label(btn)
+            label.set_text("failed")
         #cur_scr = toggle_swich_page(scr,sub_btn,"Wifi",wifi.state,wifi.names,wifi.list_index)
         FLAG = 1
         print("-----------------------------------------")
@@ -1068,6 +1081,12 @@ while True:
             lv.tick_inc(5)
             lv.task_handler()
             tim = time.ticks_ms()
+            if chart_cont_starttime:
+                if tim - chart_cont_starttime > 500:
+                    FLAG = 0
+                    wifi.cont_flag = 0
+                    chart_cont_starttime = 0
+                    continue
             key_detect()
             if cmd:
                 key_flag = 1
@@ -1313,11 +1332,13 @@ while True:
                         lv.btnm.set_btn_width(kb,22,2)
                         btn_index = 18
                     elif char == "Enter":
+                        #connect success wifi.cont_flag = 1  if failed,wifi.cont_flag = 2
                         res = pwd_ta.get_text()
                         pwd_ta.set_text("")
                         print(res)
                         FLAG = 0
                         keyboard_flag = 0
+                        wifi.cont_flag = 1
                         wifi.toggle_flag = 1
                     else:
                         pwd_ta.add_text("%s"%char)
