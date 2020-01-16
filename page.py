@@ -193,9 +193,9 @@ class WB_tools():
         self.sw_flag = 0
         self.state = 0
         self.toggle_flag = 0
-        self.cont_flag = 0
         self.index = 0
         self.preloading = 0
+        self.name = ""
         self.ls = []
 
 #language information  flag = 0,english  flag = 1,chinese
@@ -840,12 +840,13 @@ gpio_flag = 0
 new_key_noce = 0
 start_time = time.ticks_ms()
 chart_cont_starttime = 0
+CONT_FLAG = 0   #control connect chart open or close
 
 aps = nic.scan()
 while True:
 
     wifi_scan_result = []
-    buth_scan_result = []
+    buth_scan_result = ["q","w"]
     i = 0;
     for ap in aps:
 #print("SSID:{:}".format(ap[0]))
@@ -896,6 +897,85 @@ while True:
                     #print("this is home page")
                     pass
         key_init()
+        cur_scr.delete()
+    elif keyboard_flag:
+        flag = 1
+        btn_index = 18
+        k_style = lv.style_t()
+        upper_kb_map=["#","Q","W","E","R","T","Y","U","I","O","P","Bksp","\n",
+                       "abc","A","S","D","F","G","H","J","K","L","Enter","\n",
+                       "_","-","Z","X","C","V","B","N","M",",",".",":","\n",
+                       "0","1","2","3","4","5","6","7","8","9",""]
+        defalt_kb_map = ["#","q","w","e","r","t","y","u","i","o","p","Bksp","\n",
+                        "ABC","a","s","d","f","g","h","j","k","l","Enter","\n",
+                        "_","-","z","x","c","v","b","n","m",",",".",":","\n",
+                        "0","1","2","3","4","5","6","7","8","9",""]
+        cur_scr,kb,btn_index,pwd_ta = create_keyboard_page()
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            char = lv.btnm.get_btn_text(kb,btn_index)
+            lv.btnm.set_pressed(kb,btn_index)
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                if cmd == "right":
+                    if btn_index >= 44:
+                        btn_index = 0
+                    else:
+                        btn_index += 1
+                elif cmd == "left":
+                    if btn_index <= 0:
+                        btn_index = 44
+                    else:
+                        btn_index -= 1
+                elif cmd == "ok":
+                    #print(char,type(char))
+                    if char == "Bksp":
+                        print("enter del")
+                        lv.ta.del_char(pwd_ta)
+                    elif char == "ABC":
+                        kb.set_map(upper_kb_map)
+                        lv.btnm.set_btn_width(kb,11,2)
+                        lv.btnm.set_btn_width(kb,12,2)
+                        lv.btnm.set_btn_width(kb,22,2)
+                        btn_index = 18
+                    elif char == "abc":
+                        kb.set_map(defalt_kb_map)
+                        lv.btnm.set_btn_width(kb,11,2)
+                        lv.btnm.set_btn_width(kb,12,2)
+                        lv.btnm.set_btn_width(kb,22,2)
+                        btn_index = 18
+                    elif char == "Enter":
+                        #connect success wifi.cont_flag = 1  if failed,wifi.cont_flag = 2
+                        res = pwd_ta.get_text()
+                        pwd_ta.set_text("")
+                        print(res)
+                        FLAG = 0
+                        keyboard_flag = 0
+                        CONT_FLAG = 1
+                        if wifi.toggle_flag:
+                            wifi_name = wifi.name
+                            wifi_password = res
+                            print(wifi_name,wifi_password)
+                            time.sleep(5)
+                        elif buth.toggle_flag:
+                            buth_name = buth.name
+                            buth_password = res
+                            print(buth_name,buth_password)
+                            time.sleep(5)
+                        #buth.cont_flag = 1
+                        #wifi.toggle_flag = 1
+                    else:
+                        pwd_ta.add_text("%s"%char)
+                elif cmd == "back":
+                    FLAG = 0
+                    keyboard_flag = 0
+                key_init()
         cur_scr.delete()
     elif set_flag:
         scr,sub_btn = create_template()
@@ -1060,14 +1140,14 @@ while True:
         scr,sub_btn = create_template()
         #创建wifi开关
         cur_scr = select_box(scr,sub_btn,"wifi",wifi.state,wifi.sw_flag,wifi.ls,wifi.index)
-        if wifi.cont_flag == 1:
+        if CONT_FLAG == 1:
             chart_cont_starttime = time.ticks_ms()
             btn = lv.btn(cur_scr)
             btn.set_size(100,100)
             btn.align(None,lv.ALIGN.CENTER,0,0)
             label = lv.label(btn)
             label.set_text("success")
-        elif wifi.cont_flag == 2:
+        elif CONT_FLAG == 2:
             chart_cont_starttime = time.ticks_ms()
             btn = lv.btn(cur_scr)
             btn.set_size(100,100)
@@ -1084,7 +1164,7 @@ while True:
             if chart_cont_starttime:
                 if tim - chart_cont_starttime > 500:
                     FLAG = 0
-                    wifi.cont_flag = 0
+                    CONT_FLAG = 0
                     chart_cont_starttime = 0
                     continue
             key_detect()
@@ -1104,6 +1184,7 @@ while True:
                             wifi.flag = 0
                             wifi.index = 0
                             wifi.ls = []
+                            wifi.name = ""
                     elif cmd == "back":
                         wifi.toggle_flag = 0
                         set_flag = 1
@@ -1128,8 +1209,10 @@ while True:
                             else:
                                 wifi.index -= 1
                         elif cmd == "ok":
-                            wifi.toggle_flag = 0
+                            #wifi.toggle_flag = 0
                             keyboard_flag =  1
+                            #获取选中的wifi name
+                            wifi.name = wifi.ls[wifi.index-1]
                         elif cmd == "back":
                             wifi.toggle_flag = 0
                             set_flag = 1
@@ -1154,11 +1237,31 @@ while True:
         scr,sub_btn = create_template()
         #cur_scr = toggle_swich_page(scr,sub_btn,"BLUETOOTH",buth.state,buth.names,buth.list_index)
         cur_scr = select_box(scr,sub_btn,"Bluetooth",buth.state,buth.sw_flag,buth.ls,buth.index)
+        if CONT_FLAG == 1:
+            chart_cont_starttime = time.ticks_ms()
+            btn = lv.btn(cur_scr)
+            btn.set_size(100,100)
+            btn.align(None,lv.ALIGN.CENTER,0,0)
+            label = lv.label(btn)
+            label.set_text("success")
+        elif CONT_FLAG == 2:
+            chart_cont_starttime = time.ticks_ms()
+            btn = lv.btn(cur_scr)
+            btn.set_size(100,100)
+            btn.align(None,lv.ALIGN.CENTER,0,0)
+            label = lv.label(btn)
+            label.set_text("failed")
         FLAG = 1
         while FLAG:
             lv.tick_inc(5)
             lv.task_handler()
             tim = time.ticks_ms()
+            if chart_cont_starttime:
+                if tim - chart_cont_starttime > 500:
+                    FLAG = 0
+                    CONT_FLAG = 0
+                    chart_cont_starttime = 0
+                    continue
             key_detect()
             if cmd:
                 key_flag = 1
@@ -1176,6 +1279,7 @@ while True:
                             buth.flag = 0
                             buth.index = 0
                             buth.ls = []
+                            buth.name = ""
                     elif cmd == "back":
                         buth.toggle_flag = 0
                         set_flag = 1
@@ -1200,8 +1304,10 @@ while True:
                             else:
                                 buth.index -= 1
                         elif cmd == "ok":
-                            #进入buth密码输入页面
-                            pass
+                            #buth.toggle_flag = 0
+                            keyboard_flag =  1
+                            #获取选中的wifi name
+                            buth.name = buth.ls[buth.index-1]
                         elif cmd == "back":
                             buth.toggle_flag = 0
                             set_flag = 1
@@ -1279,75 +1385,7 @@ while True:
                     set_flag = 1
                     key_init()
                     cur_scr.delete()
-    elif keyboard_flag:
-        flag = 1
-        btn_index = 18
-        k_style = lv.style_t()
-        upper_kb_map=["#","Q","W","E","R","T","Y","U","I","O","P","Bksp","\n",
-                       "abc","A","S","D","F","G","H","J","K","L","Enter","\n",
-                       "_","-","Z","X","C","V","B","N","M",",",".",":","\n",
-                       "0","1","2","3","4","5","6","7","8","9",""]
-        defalt_kb_map = ["#","q","w","e","r","t","y","u","i","o","p","Bksp","\n",
-                        "ABC","a","s","d","f","g","h","j","k","l","Enter","\n",
-                        "_","-","z","x","c","v","b","n","m",",",".",":","\n",
-                        "0","1","2","3","4","5","6","7","8","9",""]
-        cur_scr,kb,btn_index,pwd_ta = create_keyboard_page()
-        FLAG = 1
-        while FLAG:
-            lv.tick_inc(5)
-            lv.task_handler()
-            tim = time.ticks_ms()
-            char = lv.btnm.get_btn_text(kb,btn_index)
-            lv.btnm.set_pressed(kb,btn_index)
-            key_detect()
-            if cmd:
-                key_flag = 1
-                taketime = time.ticks_ms() - time0
-            if key_flag and taketime > 250:
-                if cmd == "right":
-                    if btn_index >= 44:
-                        btn_index = 0
-                    else:
-                        btn_index += 1
-                elif cmd == "left":
-                    if btn_index <= 0:
-                        btn_index = 44
-                    else:
-                        btn_index -= 1
-                elif cmd == "ok":
-                    #print(char,type(char))
-                    if char == "Bksp":
-                        print("enter del")
-                        lv.ta.del_char(pwd_ta)
-                    elif char == "ABC":
-                        kb.set_map(upper_kb_map)
-                        lv.btnm.set_btn_width(kb,11,2)
-                        lv.btnm.set_btn_width(kb,12,2)
-                        lv.btnm.set_btn_width(kb,22,2)
-                        btn_index = 18
-                    elif char == "abc":
-                        kb.set_map(defalt_kb_map)
-                        lv.btnm.set_btn_width(kb,11,2)
-                        lv.btnm.set_btn_width(kb,12,2)
-                        lv.btnm.set_btn_width(kb,22,2)
-                        btn_index = 18
-                    elif char == "Enter":
-                        #connect success wifi.cont_flag = 1  if failed,wifi.cont_flag = 2
-                        res = pwd_ta.get_text()
-                        pwd_ta.set_text("")
-                        print(res)
-                        FLAG = 0
-                        keyboard_flag = 0
-                        wifi.cont_flag = 1
-                        wifi.toggle_flag = 1
-                    else:
-                        pwd_ta.add_text("%s"%char)
-                elif cmd == "back":
-                    FLAG = 0
-                    keyboard_flag = 0
-                    wifi.toggle_flag = 1
-                key_init()
-        cur_scr.delete()
+
     while time.ticks_ms()-tim < 0.0005:
         pass
 
