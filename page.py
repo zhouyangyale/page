@@ -217,7 +217,6 @@ class Program():
         self.index = 0
 class App():
     def __init__(self):
-        self.btn_state = lv.btn.STATE.REL
         self.index = 0
 class Setting():
     def __init__(self):
@@ -458,7 +457,7 @@ def control_bar(parent,bar_value):
     mute_minus = create_btn(pbtn,40,40)
     mute_minus.align(None,lv.ALIGN.IN_LEFT_MID,0,0)
     set_symbol_for_obj(mute_minus,lv.SYMBOL.LEFT)
-    return bar_value,pbtn,mute_plus,mute_minus
+    return pbtn,mute_plus,mute_minus
 
 def lan_ch_page(scr,parent,ls,index):
     lan_ls = lv.list(parent)
@@ -565,12 +564,63 @@ def create_home_page(scr,parent,index,prm,app,setting,dire):
     lv.scr_load(scr)
     return cur_scr,index,prm,app,setting,dire
 
+def create_app_page(parent,index):
+    #expression detect
+    btn_width = 100
+    btn_height = 100
+    exp_btn = create_btn(parent,btn_width,btn_height,tab_style_rel,tab_style_pr)
+    exp_btn.align(None,lv.ALIGN.IN_TOP_LEFT,10,0)
+    set_symbol_for_obj(exp_btn,lv.SYMBOL.PLAY)
+    age_btn = create_btn(parent,btn_width,btn_width,tab_style_rel,tab_style_pr)
+    age_btn.align(None,lv.ALIGN.IN_TOP_MID,0,0)
+    set_symbol_for_obj(age_btn,lv.SYMBOL.PLAY)
+    elemac_btn = create_btn(parent,btn_width,btn_width,tab_style_rel,tab_style_pr)
+    elemac_btn.align(None,lv.ALIGN.IN_TOP_RIGHT,-10,0)
+    set_symbol_for_obj(elemac_btn,lv.SYMBOL.PLAY)
+    dist_btn = create_btn(parent,btn_width,btn_width,tab_style_rel,tab_style_pr)
+    dist_btn.align(None,lv.ALIGN.IN_BOTTOM_LEFT,10,-10)
+    set_symbol_for_obj(dist_btn,lv.SYMBOL.PLAY)
+    clock_btn = create_btn(parent,btn_width,btn_width,tab_style_rel,tab_style_pr)
+    clock_btn.align(None,lv.ALIGN.IN_BOTTOM_MID,0,-10)
+    set_symbol_for_obj(clock_btn,lv.SYMBOL.PLAY)
+    shotgame_btn = create_btn(parent,btn_width,btn_width,tab_style_rel,tab_style_pr)
+    shotgame_btn.align(None,lv.ALIGN.IN_BOTTOM_RIGHT,-10,-10)
+    set_symbol_for_obj(shotgame_btn,lv.SYMBOL.PLAY)
+    if LAN_flag:
+        set_label_for_obj(exp_btn,"face expression detect")
+        set_label_for_obj(age_btn,"age detect")
+        set_label_for_obj(elemac_btn,"control eletronic machine")
+        set_label_for_obj(dist_btn,"show detect distance")
+        set_label_for_obj(clock_btn,"show clock")
+        set_label_for_obj(shotgame_btn,"shot ball game")
+    else:
+        set_label_for_obj(exp_btn,"人脸表情检测")
+        set_label_for_obj(age_btn,"年龄检测")
+        set_label_for_obj(elemac_btn,"控制电机")
+        set_label_for_obj(dist_btn,"显示检测距离")
+        set_label_for_obj(clock_btn,"显示时钟")
+        set_label_for_obj(shotgame_btn,"投篮游戏")
+    if index == 0:
+        lv.btn.set_state(exp_btn,lv.btn.STATE.PR)
+    elif index == 1:
+        lv.btn.set_state(age_btn,lv.btn.STATE.PR)
+    elif index == 2:
+        lv.btn.set_state(elemac_btn,lv.btn.STATE.PR)
+    elif index == 3:
+        lv.btn.set_state(dist_btn,lv.btn.STATE.PR)
+    elif index == 4:
+        lv.btn.set_state(clock_btn,lv.btn.STATE.PR)
+    else:
+        lv.btn.set_state(shotgame_btn,lv.btn.STATE.PR)
+    cur_scr = scr.get_screen()
+    lv.scr_load(scr)
+    return cur_scr
 
 def create_set_page1(parent,index,mute,buth,wifi):
     #print("enter setting page")
     #音量控制条
     #ctr_bar = Control_bar()
-    mute.bar_value,mute_message_btn,mute_plus,mute_minus = control_bar(parent,mute.bar_value)
+    mute_message_btn,mute_plus,mute_minus = control_bar(parent,mute.bar_value)
     #蓝牙控制按钮
     bu_state_btn = create_btn(parent,80,30,layout_flag=lv.LAYOUT.OFF)
     bu_state_btn.align(None,lv.ALIGN.IN_TOP_MID,0,0)
@@ -682,7 +732,7 @@ def create_set_page2(parent,index,light):
         #language控制
         pass
     elif light.chart:
-        light.bar_value,light_message_btn,light_plus,light_minus = control_bar(parent,light.bar_value)
+        light_message_btn,light_plus,light_minus = control_bar(parent,light.bar_value)
         light_message_btn.move_foreground()
         light_message_btn.set_hidden(False)
         if light.cm_flag == 0:
@@ -720,6 +770,41 @@ def create_prm_page(parent,index):
     cur_scr = scr.get_screen()
     lv.scr_load(scr)
     return cur_scr
+
+def create_elemac_page(scr,parent,bar_value):
+    pbtn_width = 300
+    pbtn_height = 60
+    bar_width = 200
+    bar_height = 20
+    elemac_message_btn = create_btn(parent,pbtn_width,pbtn_height,layout_flag=lv.LAYOUT.OFF)
+    elemac_message_btn.align(None,lv.ALIGN.CENTER,0,0)
+    label = set_label_for_obj(elemac_message_btn,'%d'%bar_value)
+    label.align(None,lv.ALIGN.IN_BOTTOM_MID,0,0)
+    bar = lv.bar(elemac_message_btn)
+    bar.set_size(bar_width,bar_height)
+    bar.set_range(-100,100)
+    bar.set_value(bar_value,lv.ANIM.OFF)
+    bar.align(None,lv.ALIGN.CENTER,0,0)
+    #加号按钮
+    elemac_plus = create_btn(elemac_message_btn,40,40)
+    elemac_plus.align(None,lv.ALIGN.IN_RIGHT_MID,0,0)
+    set_symbol_for_obj(elemac_plus,lv.SYMBOL.PLUS)
+    #减号按钮
+    elemac_minus = create_btn(elemac_message_btn,40,40)
+    elemac_minus.align(None,lv.ALIGN.IN_LEFT_MID,0,0)
+    set_symbol_for_obj(elemac_minus,lv.SYMBOL.MINUS)
+    if mute.cm_flag == 0:
+        pass
+    elif elemac.cm_flag == 1:
+        lv.btn.set_state(elemac_plus,lv.btn.STATE.PR)
+    elif elemac.cm_flag == 2:
+        lv.btn.set_state(elemac_minus,lv.btn.STATE.PR)
+    else:
+        pass
+    cur_scr = scr.get_screen()
+    lv.scr_load(scr)
+    return cur_scr
+
 def create_keyboard_page():
     scr = lv.obj()
     # Create styles for the keyboard
@@ -822,11 +907,15 @@ dire = Dir()
 #setting page variable init
 wifi = WB_tools()
 mute = ML_tools()
+elemac = ML_tools()
+elemac.bar_value = 0
 light = ML_tools()
+light.bar_value = 25
 buth = WB_tools()
 lan = Language()
 power = Power()
 info = Info()
+app = App()
 
 btn_index = 0
 power_flag = 0
@@ -849,7 +938,7 @@ while True:
     buth_scan_result = []
     i = 0;
     for ap in aps:
-#print("SSID:{:}".format(ap[0]))
+    #print("SSID:{:}".format(ap[0]))
       wifi_scan_result.append(ap[0])
       i = i + 1
     if home_flag:
@@ -885,7 +974,7 @@ while True:
                         prm.index = 0
                     elif btn_index ==1:
                         app_flag = 1
-                        #app.index = 0
+                        app.index = 0
                     elif btn_index == 2:
                         set_flag = 1
                         setting.index = 0
@@ -1128,9 +1217,49 @@ while True:
                 key_init()
         cur_scr.delete()
     elif app_flag:
-        print("app")
-        app_flag = 0
-        home_flag =1
+        scr,sub_btn = create_template()
+        cur_scr = create_app_page(sub_btn,app.index)
+        FLAG = 1
+        print("-----------------------------------------")
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag and taketime > 250:
+                FLAG = 0
+                if cmd == "right":
+                    if app.index >= 5:
+                        app.index = 5
+                    else:
+                        app.index += 1
+                elif cmd == "left":
+                    if app.index <= 0:
+                        app.index = 0
+                    else:
+                        app.index -= 1
+                elif cmd == "ok":
+                    if app.index == 0:
+                        pass
+                    elif app.index == 1:
+                        pass
+                    elif app.index == 2:
+                        elemac_page = 1
+                        app_flag = 0
+                    elif app.index == 3:
+                        pass
+                    elif app.index == 4:
+                        pass
+                    elif app.index == 5:
+                        pass
+                elif cmd == "back":
+                    app_flag = 0
+                    home_flag = 1
+                key_init()
+        cur_scr.delete()
     elif dir_flag:
         print("dir_flag")
         dir_flag = 0
@@ -1385,6 +1514,47 @@ while True:
                     set_flag = 1
                     key_init()
                     cur_scr.delete()
+    elif elemac_page:
+        #eletronic machine speed is  elemac.bar_value
+        scr,sub_btn = create_template()
+        cur_scr = create_elemac_page(scr,sub_btn,elemac.bar_value)
+        FLAG = 1
+        while FLAG:
+            lv.tick_inc(5)
+            lv.task_handler()
+            tim = time.ticks_ms()
+            key_detect()
+            if cmd:
+                key_flag = 1
+                taketime = time.ticks_ms() - time0
+            if key_flag :
+                if cmd == "right":
+                    elemac.cm_flag = 1
+                    if taketime > 250:
+                        FLAG = 0
+                        elemac.bar_value += 10
+                        if elemac.bar_value >= 100:
+                            elemac.bar_value = 100
+                        elemac.cm_flag = 3
+                        key_init()
+                elif cmd == "left":
+                    elemac.cm_flag = 2
+                    if taketime > 250:
+                        FLAG = 0
+                        elemac.bar_value -= 10
+                        if elemac.bar_value <= -100:
+                            elemac.bar_value = -100
+                        elemac.cm_flag = 3
+                        key_init()
+                elif cmd == "back" and taketime > 250:
+                    FLAG = 0
+                    elemac_page = 0
+                    app_flag = 1
+                    key_init()
+                elif cmd == "ok" and taketime > 250:
+                    FLAG = 0
+                    key_init()
+        cur_scr.delete()
 
     while time.ticks_ms()-tim < 0.0005:
         pass
