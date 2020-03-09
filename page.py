@@ -1052,6 +1052,12 @@ while True:
                             wifi_password = res
                             #print(wifi_name,wifi_password)
                             #time.sleep(5)
+                            #wifi.cont_flag = 1
+                            ret = nic.connect(wifi_name, wifi_password)
+                            if ret == 0:
+                              CONT_FLAG = 1
+                            elif
+                              CONT_FLAG = 2
                         elif buth.toggle_flag:
                             buth_name = buth.name
                             buth_password = res
